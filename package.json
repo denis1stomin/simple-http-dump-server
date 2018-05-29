@@ -1,0 +1,30 @@
+{
+  "name": "simple-http-dump-server",
+  "version": "0.1.0",
+  "description": "Simple HTTP server which dumps all incoming requests to standard output stream.",
+  "main": "index.js",
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/distomin/simple-http-dump-server.git"
+  },
+  "keywords": [
+    "npm",
+    "http",
+    "requests",
+    "log",
+    "logger",
+    "dump",
+    "dumper",
+    "server",
+    "srv"
+  ],
+  "author": "Denis I",
+  "license": "MIT",
+  "bugs": {
+    "url": "https://github.com/distomin/simple-http-dump-server/issues"
+  },
+  "homepage": "https://github.com/distomin/simple-http-dump-server#readme"
+}
