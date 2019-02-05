@@ -25,8 +25,10 @@ POST /some/path HTTP/1.1
 
 ## Run using Azure Container Instances service
 
+In the case you need publicly available URI you can run it as Azure Container Instance.
+
 * `az group create --name http-dump --location centralus` (create resource group)
-* `CONTAINER_DNS_NAME=$(uuidgen)` (define unique and secret DNS name label)
+* `CONTAINER_DNS_NAME=$(uuidgen)` (define unique DNS name label)
 * `# az container create --help` (you can customize the command below)
 * `az container create --name http-dump-server --resource-group http-dump --ip-address public --image denis1stomin/simple-http-dump-server --ports 8000 --dns-name-label $CONTAINER_DNS_NAME` (create and run container instance)
 * `az container attach --name http-dump-server --resource-group http-dump` (connect to container standard output)
