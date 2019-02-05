@@ -25,7 +25,16 @@ POST /some/path HTTP/1.1
 
 ## Run using Azure Container Instances service
 
-TODO
+* `az group create --name http-dump --location centralus` (create resource group)
+* `CONTAINER_DNS_NAME=$(uuidgen)` (define unique and secret DNS name label)
+* `# az container create --help` (you can customize the command below)
+* `az container create --name http-dump-server --resource-group http-dump --ip-address public --image denis1stomin/simple-http-dump-server --ports 8000 --dns-name-label $CONTAINER_DNS_NAME` (create and run container instance)
+* `az container attach --name http-dump-server --resource-group http-dump` (connect to container standard output)
+
+Make test request from another Terminal window.
+* `TEST_URI=http://$CONTAINER_DNS_NAME.centralus.azurecontainer.io:8000/some/path`
+* `curl $TEST_URI`
+
 
 ## Download and run NPM package
 
