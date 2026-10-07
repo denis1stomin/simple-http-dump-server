@@ -106,5 +106,7 @@ jobs:
           registry-url: https://registry.npmjs.org
       - name: Check tag matches package.json version
         run: test "v$(node -p "require('./package.json').version")" = "$GITHUB_REF_NAME"
+      - name: Use npm with trusted publishing support (>= 11.5.1)
+        run: npm install -g npm@latest
       - run: npm ci
       - run: npm publish --provenance --access public
