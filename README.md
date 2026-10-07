@@ -4,6 +4,8 @@
 [![npm version](https://img.shields.io/npm/v/simple-http-dump-server?logo=npm)](https://www.npmjs.com/package/simple-http-dump-server)
 [![npm downloads](https://img.shields.io/npm/dm/simple-http-dump-server?logo=npm)](https://www.npmjs.com/package/simple-http-dump-server)
 [![Docker image](https://img.shields.io/badge/ghcr.io-simple--http--dump--server-2496ED?logo=docker&logoColor=white)](https://github.com/denis1stomin/simple-http-dump-server/pkgs/container/simple-http-dump-server)
+[![Docker Hub version](https://img.shields.io/docker/v/denis1stomin/simple-http-dump-server?sort=semver&logo=docker&logoColor=white&label=docker%20hub)](https://hub.docker.com/r/denis1stomin/simple-http-dump-server)
+[![Docker Hub pulls](https://img.shields.io/docker/pulls/denis1stomin/simple-http-dump-server?logo=docker&logoColor=white)](https://hub.docker.com/r/denis1stomin/simple-http-dump-server)
 [![Node.js](https://img.shields.io/node/v/simple-http-dump-server?logo=node.js&logoColor=white)](https://nodejs.org)
 [![License: MIT](https://img.shields.io/github/license/denis1stomin/simple-http-dump-server)](LICENSE)
 
@@ -66,7 +68,7 @@ All settings are environment variables.
 | `LOG_BODY_LIMIT`    | `4kb`     | Max body bytes printed to stdout; the rest is cut with `… (truncated, N bytes total)`. `0` hides bodies. |
 | `DUMP_FILE`         | (unset)   | Store recordings in this file (appended, full bodies). Without it they are kept in memory. |
 | `DUMP_BUFFER_LIMIT` | `64mb`    | Size of the in-memory buffer when `DUMP_FILE` isn't set; the oldest records are evicted first. |
-| `DUMP_API_PATH`     | `/__dump` | Path of the [dump API](#-reading-the-dump-over-http). Set it to an empty string to turn the API off. |
+| `DUMP_API_PATH`     | `/__dump` | Path of the [dump API](#-reading-the-dump-over-http). No authentication; set it to an empty string to turn the API off. |
 
 If `DUMP_FILE` can't be opened (missing directory, read-only filesystem) or a value is invalid, the server exits at startup with a one-line error instead of failing on the first request.
 
@@ -104,6 +106,8 @@ The server itself serves the recordings, so tests can fetch them without `kubect
 | other methods    | `405`                                                                               |
 
 Calls to the dump API are themselves neither recorded nor logged. If the client under test needs the `/__dump` path itself, change `DUMP_API_PATH`.
+
+> 🔓 **The dump API has no authentication.** Anyone who can reach the server can read every recorded body (credential headers are never stored, but bodies are stored in full) and can clear the dump. That's fine on localhost or inside a cluster where only your tests can reach the service. Anywhere else, turn the API off with `DUMP_API_PATH=` (empty), or at least restrict access to the port, e.g. with a Kubernetes `NetworkPolicy`.
 
 ```sh
 curl -s http://localhost:8000/__dump | jq -c 'select(.status != 200) | {ts, url, status}'
@@ -173,7 +177,7 @@ containers:
       allowPrivilegeEscalation: false
 ```
 
-Tests then use `GET` and `DELETE http://<service>:8000/__dump`. To keep recordings across many runs or beyond `DUMP_BUFFER_LIMIT`, add an `emptyDir` at `/tmp` and set `DUMP_FILE=/tmp/run.jsonl`.
+Tests then use `GET` and `DELETE http://<service>:8000/__dump`. The API has no authentication, so keep the Service cluster-internal (`ClusterIP`, no Ingress). If the pod has to be reachable from outside, turn the API off with `- { name: DUMP_API_PATH, value: "" }`. To keep recordings across many runs or beyond `DUMP_BUFFER_LIMIT`, add an `emptyDir` at `/tmp` and set `DUMP_FILE=/tmp/run.jsonl`.
 
 ## ☁️ Public endpoint with Azure Container Instances
 
@@ -194,7 +198,7 @@ curl "http://$CONTAINER_DNS_NAME.centralus.azurecontainer.io:8000/some/path"
 
 When you're done, delete everything with `az group delete --name http-dump`.
 
-> ⚠️ A public endpoint accepts requests from anyone, and `GET /__dump` shows anyone what was recorded. Don't leave it running longer than you need it, and consider `DUMP_API_PATH=` (empty) or a hard-to-guess path, e.g. `DUMP_API_PATH=/$(uuidgen)`.
+> ⚠️ A public endpoint accepts requests from anyone, and `GET /__dump` shows anyone what was recorded. Don't leave it running longer than you need it, and turn the dump API off: add `--environment-variables DUMP_API_PATH=` to `az container create`. A hard-to-guess path like `DUMP_API_PATH=/$(uuidgen)` only hides the API; it isn't authentication.
 
 ## 🛠️ Development
 
