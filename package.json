@@ -1,7 +1,7 @@
 {
   "name": "simple-http-dump-server",
   "version": "1.0.0",
-  "description": "Simple HTTP server which dumps all incoming requests to standard output stream.",
+  "description": "Tiny HTTP server that answers every request with 200 and dumps it to stdout and, optionally, a JSON Lines file. A fake upstream for webhooks and client testing.",
   "main": "index.js",
   "bin": {
     "simple-http-dump-server": "index.js"
@@ -39,6 +39,7 @@
   },
   "homepage": "https://github.com/denis1stomin/simple-http-dump-server#readme",
   "dependencies": {
+    "bytes": "^3.1.2",
     "express": "^5.1.0"
   },
   "devDependencies": {
