@@ -1,18 +1,27 @@
 {
   "name": "simple-http-dump-server",
-  "version": "0.5.0",
+  "version": "1.0.0",
   "description": "Simple HTTP server which dumps all incoming requests to standard output stream.",
   "main": "index.js",
+  "bin": {
+    "simple-http-dump-server": "index.js"
+  },
+  "files": [
+    "index.js"
+  ],
+  "engines": {
+    "node": ">=22"
+  },
   "scripts": {
     "start": "node ./index.js",
-    "test": "echo \"Error: no test specified\" && exit 1"
+    "lint": "eslint .",
+    "test": "node --test"
   },
   "repository": {
     "type": "git",
-    "url": "git+https://github.com/distomin/simple-http-dump-server.git"
+    "url": "git+https://github.com/denis1stomin/simple-http-dump-server.git"
   },
   "keywords": [
-    "npm",
     "http",
     "requests",
     "log",
@@ -20,17 +29,21 @@
     "dump",
     "dumper",
     "server",
-    "srv"
+    "webhook",
+    "mock"
   ],
-  "author": "Denis I",
+  "author": "Denis Istomin",
   "license": "MIT",
   "bugs": {
-    "url": "https://github.com/distomin/simple-http-dump-server/issues"
+    "url": "https://github.com/denis1stomin/simple-http-dump-server/issues"
   },
-  "homepage": "https://github.com/distomin/simple-http-dump-server#readme",
+  "homepage": "https://github.com/denis1stomin/simple-http-dump-server#readme",
   "dependencies": {
-    "body-parser": "^1.18.3",
-    "express": "^4.16.3",
-    "morgan": "^1.9.0"
+    "express": "^5.1.0"
+  },
+  "devDependencies": {
+    "@eslint/js": "^9.0.0",
+    "eslint": "^9.0.0",
+    "globals": "^16.0.0"
   }
 }

@@ -1,19 +1,18 @@
-FROM node:carbon
+FROM node:24-alpine
 
-WORKDIR /usr/src/app
+ENV NODE_ENV=production \
+    PORT=8000
 
-# Install app dependencies
-# A wildcard is used to ensure both package.json AND package-lock.json are copied
-# where available (npm@5+)
-COPY package*.json ./
+WORKDIR /app
 
-RUN npm install
-# If you are building your code for production
-# RUN npm install --only=production
+# Install only runtime dependencies, exactly as locked
+COPY package.json package-lock.json ./
+RUN npm ci --omit=dev && npm cache clean --force
 
-# Bundle app source
-COPY . .
+COPY index.js ./
 
+USER node
 EXPOSE 8000
-CMD [ "npm", "start" ]
 
+# Run node directly (not via npm) so it receives SIGTERM from `docker stop`
+CMD ["node", "index.js"]
