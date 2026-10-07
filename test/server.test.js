@@ -2,8 +2,11 @@
 
 const { test } = require('node:test');
 const assert = require('node:assert/strict');
+const fs = require('node:fs');
+const os = require('node:os');
+const path = require('node:path');
 const { PassThrough } = require('node:stream');
-const { createApp } = require('../index.js');
+const { createApp, MemoryStore, FileStore } = require('../index.js');
 
 function collect(stream) {
   let data = '';
@@ -13,10 +16,10 @@ function collect(stream) {
 
 async function withServer(options, fn) {
   const logStream = new PassThrough();
-  const dumpStream = new PassThrough();
   const log = collect(logStream);
-  const dump = collect(dumpStream);
-  const server = createApp({ logStream, dumpStream, ...options }).listen(0);
+  const dumpStore = options.dumpStore || new MemoryStore();
+  const dump = () => (dumpStore.text ? dumpStore.text() : '');
+  const server = createApp({ logStream, ...options, dumpStore }).listen(0);
   await new Promise((resolve) => server.once('listening', resolve));
   const baseUrl = `http://127.0.0.1:${server.address().port}`;
   try {
@@ -24,6 +27,10 @@ async function withServer(options, fn) {
   } finally {
     await new Promise((resolve) => server.close(resolve));
   }
+}
+
+function parseLines(text) {
+  return text.split('\n').filter(Boolean).map((line) => JSON.parse(line));
 }
 
 test('answers 200 with an empty body', async () => {
@@ -131,4 +138,86 @@ test('adds a parsed json field for JSON bodies only', async () => {
     assert.deepEqual(lines.map((line) => line.json), [{ a: [1, 2] }, { b: true }, undefined, undefined]);
     assert.equal(lines[2].body, 'not json');
   });
+});
+
+test('dump API returns recordings as JSON lines and clears them', async () => {
+  await withServer({}, async ({ baseUrl }) => {
+    await fetch(`${baseUrl}/a`, { method: 'POST', body: 'one' });
+    await fetch(`${baseUrl}/b`);
+
+    let res = await fetch(`${baseUrl}/__dump`);
+    assert.equal(res.status, 200);
+    assert.match(res.headers.get('content-type'), /application\/x-ndjson/);
+    // the record is stored before the response, so it is visible right away
+    assert.deepEqual(parseLines(await res.text()).map((r) => r.url), ['/a', '/b']);
+
+    res = await fetch(`${baseUrl}/__dump`, { method: 'DELETE' });
+    assert.equal(res.status, 204);
+    res = await fetch(`${baseUrl}/__dump`);
+    assert.equal(await res.text(), '');
+  });
+});
+
+test('dump API calls are neither recorded nor logged', async () => {
+  await withServer({}, async ({ baseUrl, log, dump }) => {
+    await fetch(`${baseUrl}/__dump`);
+    await fetch(`${baseUrl}/__dump?x=1`, { method: 'DELETE' });
+    const res = await fetch(`${baseUrl}/__dump`, { method: 'POST', body: 'x' });
+    assert.equal(res.status, 405);
+    assert.equal(res.headers.get('allow'), 'GET, DELETE');
+    await new Promise((resolve) => setImmediate(resolve));
+
+    assert.equal(dump(), '');
+    assert.equal(log(), '');
+  });
+});
+
+test('dump API path is configurable and can be disabled', async () => {
+  await withServer({ dumpApiPath: '/_rec' }, async ({ baseUrl }) => {
+    await fetch(`${baseUrl}/x`);
+    const res = await fetch(`${baseUrl}/_rec`);
+    assert.equal(parseLines(await res.text()).length, 1);
+  });
+  await withServer({ dumpApiPath: '' }, async ({ baseUrl, dump }) => {
+    const res = await fetch(`${baseUrl}/__dump`);
+    assert.equal(await res.text(), '');
+    assert.equal(parseLines(dump())[0].url, '/__dump');
+  });
+});
+
+test('memory buffer evicts the oldest records past its limit', async () => {
+  const dumpStore = new MemoryStore('1kb');
+  await withServer({ dumpStore }, async ({ baseUrl }) => {
+    for (let i = 0; i < 10; i++) {
+      await fetch(`${baseUrl}/r${i}`, { method: 'POST', body: 'x'.repeat(300) });
+    }
+    const res = await fetch(`${baseUrl}/__dump`);
+    const urls = parseLines(await res.text()).map((r) => r.url);
+    assert.ok(urls.length > 0 && urls.length < 10);
+    assert.equal(urls.at(-1), '/r9');
+    assert.equal(Number(res.headers.get('x-dump-dropped')), 10 - urls.length);
+  });
+});
+
+test('dump API serves and truncates DUMP_FILE', async () => {
+  const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'dump-test-'));
+  const file = path.join(dir, 'run.jsonl');
+  const dumpStore = new FileStore(file);
+  try {
+    await withServer({ dumpStore }, async ({ baseUrl }) => {
+      await fetch(`${baseUrl}/f1`, { method: 'POST', body: 'hello' });
+      let res = await fetch(`${baseUrl}/__dump`);
+      assert.deepEqual(parseLines(await res.text()).map((r) => r.url), ['/f1']);
+
+      await fetch(`${baseUrl}/__dump`, { method: 'DELETE' });
+      assert.equal(fs.readFileSync(file, 'utf8'), '');
+
+      await fetch(`${baseUrl}/f2`);
+      res = await fetch(`${baseUrl}/__dump`);
+      assert.deepEqual(parseLines(await res.text()).map((r) => r.url), ['/f2']);
+    });
+  } finally {
+    dumpStore.close();
+    fs.rmSync(dir, { recursive: true, force: true });
+  }
 });
