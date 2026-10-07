@@ -11,7 +11,8 @@ RUN npm ci --omit=dev && npm cache clean --force
 
 COPY index.js ./
 
-USER node
+# Numeric UID of the image's `node` user, so runAsNonRoot can verify it
+USER 1000:1000
 EXPOSE 8000
 
 # Run node directly (not via npm) so it receives SIGTERM from `docker stop`

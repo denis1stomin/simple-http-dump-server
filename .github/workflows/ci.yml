@@ -42,6 +42,9 @@ jobs:
     permissions:
       contents: read
       packages: write
+    env:
+      # Docker Hub mirror is pushed only when these repo secrets are configured
+      HAS_DOCKERHUB: ${{ secrets.DOCKERHUB_USERNAME != '' && secrets.DOCKERHUB_TOKEN != '' }}
     steps:
       - uses: actions/checkout@v5
       - uses: docker/setup-qemu-action@v3
@@ -49,7 +52,9 @@ jobs:
       - uses: docker/metadata-action@v5
         id: meta
         with:
-          images: ghcr.io/${{ github.repository }}
+          images: |
+            ghcr.io/${{ github.repository }}
+            name=docker.io/denis1stomin/simple-http-dump-server,enable=${{ env.HAS_DOCKERHUB == 'true' }}
           tags: |
             type=ref,event=branch
             type=ref,event=pr
@@ -62,6 +67,11 @@ jobs:
           registry: ghcr.io
           username: ${{ github.actor }}
           password: ${{ secrets.GITHUB_TOKEN }}
+      - uses: docker/login-action@v3
+        if: github.event_name != 'pull_request' && env.HAS_DOCKERHUB == 'true'
+        with:
+          username: ${{ secrets.DOCKERHUB_USERNAME }}
+          password: ${{ secrets.DOCKERHUB_TOKEN }}
       - name: Build (and push outside PRs)
         uses: docker/build-push-action@v6
         with:

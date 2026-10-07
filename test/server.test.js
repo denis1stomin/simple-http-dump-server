@@ -95,3 +95,40 @@ test('redacts credential headers in the text log', async () => {
     assert.doesNotMatch(text, /test-token|sid=abc/);
   });
 });
+
+test('records requests rejected by the body limit', async () => {
+  await withServer({ bodyLimit: '1kb' }, async ({ baseUrl, log, dump }) => {
+    const res = await fetch(`${baseUrl}/too/big`, { method: 'POST', body: 'x'.repeat(3072) });
+    assert.equal(res.status, 413);
+    await new Promise((resolve) => setImmediate(resolve));
+
+    assert.match(log(), / - 413 .*\r?\nPOST \/too\/big HTTP/);
+    const record = JSON.parse(dump().trim());
+    assert.equal(record.status, 413);
+    assert.equal(record.url, '/too/big');
+  });
+});
+
+test('truncates long bodies in the text log but not in the dump', async () => {
+  await withServer({ logBodyLimit: '10b' }, async ({ baseUrl, log, dump }) => {
+    await fetch(baseUrl, { method: 'POST', body: 'abcdefghijklmnop' });
+    await new Promise((resolve) => setImmediate(resolve));
+
+    assert.match(log(), /abcdefghij… \(truncated, 16 bytes total\)/);
+    assert.equal(JSON.parse(dump().trim()).body, 'abcdefghijklmnop');
+  });
+});
+
+test('adds a parsed json field for JSON bodies only', async () => {
+  await withServer({}, async ({ baseUrl, dump }) => {
+    const post = (type, body) => fetch(baseUrl, { method: 'POST', headers: { 'content-type': type }, body });
+    await post('application/json; charset=utf-8', '{"a":[1,2]}');
+    await post('application/vnd.api+json', '{"b":true}');
+    await post('application/json', 'not json');
+    await post('text/plain', '{"c":1}');
+
+    const lines = dump().trim().split('\n').map((line) => JSON.parse(line));
+    assert.deepEqual(lines.map((line) => line.json), [{ a: [1, 2] }, { b: true }, undefined, undefined]);
+    assert.equal(lines[2].body, 'not json');
+  });
+});
