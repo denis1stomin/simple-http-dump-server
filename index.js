@@ -215,19 +215,31 @@ function fail(message) {
   process.exit(1);
 }
 
+// Size setting from the environment; an invalid value names the variable to fix
+function envBytes(name, fallback) {
+  try {
+    return parseBytes(process.env[name] || fallback, name);
+  } catch (err) {
+    fail(err.message);
+  }
+}
+
 function main() {
   const env = process.env;
   const port = Number(env.PORT) || 8000;
+  const bodyLimit = envBytes('BODY_LIMIT', '50mb');
+  const logBodyLimit = envBytes('LOG_BODY_LIMIT', '4kb');
+  const dumpBufferLimit = envBytes('DUMP_BUFFER_LIMIT', '64mb');
 
   let app;
   let dumpStore;
   try {
     dumpStore = env.DUMP_FILE
       ? new FileStore(env.DUMP_FILE)
-      : new MemoryStore(env.DUMP_BUFFER_LIMIT || '64mb');
+      : new MemoryStore(dumpBufferLimit);
     app = createApp({
-      bodyLimit: env.BODY_LIMIT || '50mb',
-      logBodyLimit: env.LOG_BODY_LIMIT || '4kb',
+      bodyLimit,
+      logBodyLimit,
       dumpStore,
       dumpApiPath: env.DUMP_API_PATH ?? '/__dump',
     });

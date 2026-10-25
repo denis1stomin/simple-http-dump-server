@@ -5,6 +5,7 @@ const assert = require('node:assert/strict');
 const fs = require('node:fs');
 const os = require('node:os');
 const path = require('node:path');
+const { spawnSync } = require('node:child_process');
 const { PassThrough } = require('node:stream');
 const { createApp, MemoryStore, FileStore } = require('../index.js');
 
@@ -219,5 +220,17 @@ test('dump API serves and truncates DUMP_FILE', async () => {
   } finally {
     dumpStore.close();
     fs.rmSync(dir, { recursive: true, force: true });
+  }
+});
+
+test('an invalid size setting fails at startup and names the variable', () => {
+  for (const name of ['BODY_LIMIT', 'LOG_BODY_LIMIT', 'DUMP_BUFFER_LIMIT']) {
+    const result = spawnSync(process.execPath, [path.join(__dirname, '..', 'index.js')], {
+      env: { ...process.env, [name]: 'lots' },
+      encoding: 'utf8',
+      timeout: 5000,
+    });
+    assert.equal(result.status, 1, name);
+    assert.equal(result.stderr.trim(), `simple-http-dump-server: Invalid ${name}: lots`);
   }
 });
