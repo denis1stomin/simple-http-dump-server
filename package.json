@@ -1,6 +1,6 @@
 {
   "name": "simple-http-dump-server",
-  "version": "1.0.1",
+  "version": "1.0.2",
   "description": "Tiny HTTP server that answers every request with 200 and dumps it to stdout and, optionally, a JSON Lines file. A fake upstream for webhooks and client testing.",
   "main": "index.js",
   "bin": {
