@@ -47,7 +47,11 @@ npx simple-http-dump-server
 docker run --rm -p 8000:8000 ghcr.io/denis1stomin/simple-http-dump-server
 ```
 
-> The old Docker Hub image `denis1stomin/simple-http-dump-server` is outdated (2018). Use the `ghcr.io` image above. The Docker Hub copy is updated only if the CI has Docker Hub credentials.
+The same image is also on Docker Hub as [`denis1stomin/simple-http-dump-server`](https://hub.docker.com/r/denis1stomin/simple-http-dump-server), with the same tags:
+
+```sh
+docker run --rm -p 8000:8000 denis1stomin/simple-http-dump-server
+```
 
 Then send it something:
 
